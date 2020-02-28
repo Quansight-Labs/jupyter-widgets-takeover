@@ -1,10 +1,11 @@
 import {
-  IRouter,
+  ILabShell,
+  ILayoutRestorer,
   JupyterFrontEnd,
-  JupyterFrontEndPlugin
+  JupyterFrontEndPlugin,
+  LayoutRestorer
 } from "@jupyterlab/application";
 import { ReactWidget } from "@jupyterlab/apputils";
-import { URLExt } from "@jupyterlab/coreutils";
 import { IRenderMimeRegistry } from "@jupyterlab/rendermime";
 import { IRenderMime } from "@jupyterlab/rendermime-interfaces";
 import { IStateDB } from "@jupyterlab/statedb";
@@ -23,9 +24,9 @@ function Component({ onClick }: { onClick: () => void }) {
 class OutputWidget extends ReactWidget implements IRenderMime.IRenderer {
   constructor(
     private readonly options: {
-      app: JupyterFrontEnd;
-      router: IRouter;
       state: IStateDB;
+      restorer: ILayoutRestorer;
+      labShell: ILabShell;
     }
   ) {
     super();
@@ -40,18 +41,16 @@ class OutputWidget extends ReactWidget implements IRenderMime.IRenderer {
   }
 
   async onClick() {
-    const { app, router } = this.options;
+    const { state } = this.options;
 
-    const workspaceName = "my-notebook";
-    const id = `/lab/workspaces/${workspaceName}`;
-    await app.serviceManager.workspaces.save(id, {
-      data: this.workspaceData,
-      metadata: { id }
-    });
-
-    router.navigate(URLExt.objectToQueryString({ clone: workspaceName }), {
-      hard: true
-    });
+    // update state db
+    for (const [k, v] of Object.entries(this.workspaceData)) {
+      await state.save(k, v as any);
+    }
+    // trigger layout change
+    const restorer = this.options.restorer as LayoutRestorer;
+    const layout = await restorer.fetch();
+    this.options.labShell.restoreLayout(layout);
   }
 
   private workspaceData = {};
@@ -63,18 +62,19 @@ class OutputWidget extends ReactWidget implements IRenderMime.IRenderer {
 const extension: JupyterFrontEndPlugin<void> = {
   id: "jupyter-widgets-takeover:workspace",
   autoStart: true,
-  requires: [IRenderMimeRegistry, IRouter, IStateDB],
+  requires: [IRenderMimeRegistry, ILabShell, IStateDB, ILayoutRestorer],
 
   activate: (
     app: JupyterFrontEnd,
     rendermime: IRenderMimeRegistry,
-    router: IRouter,
-    state: IStateDB
+    labShell: ILabShell,
+    state: IStateDB,
+    restorer: ILayoutRestorer
   ) => {
     rendermime.addFactory({
       safe: true,
       mimeTypes: [MIME_TYPE],
-      createRenderer: () => new OutputWidget({ app, router, state })
+      createRenderer: () => new OutputWidget({ state, restorer, labShell })
     });
   }
 };
