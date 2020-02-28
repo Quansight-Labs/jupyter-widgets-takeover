@@ -8,15 +8,17 @@ import {
   JupyterFrontEndPlugin
 } from "@jupyterlab/application";
 import {
+  MainAreaWidget,
   ReactWidget,
-  WidgetTracker,
-  MainAreaWidget
+  WidgetTracker
 } from "@jupyterlab/apputils";
 import { IDocumentManager } from "@jupyterlab/docmanager";
 import { Context } from "@jupyterlab/docregistry";
 import { INotebookModel, INotebookTracker } from "@jupyterlab/notebook";
 import { IRenderMimeRegistry } from "@jupyterlab/rendermime";
 import { IRenderMime } from "@jupyterlab/rendermime-interfaces";
+import { IRestorer } from "@jupyterlab/statedb";
+import { Token } from "@lumino/coreutils";
 import * as React from "react";
 
 const MIME_TYPE = "application/x.jupyterlab.widget+json";
@@ -25,6 +27,12 @@ const WIDGETS_MIME_TYPE = "...";
 
 const OPEN_WIDGET_COMMAND = "ipywidgets:open";
 const NAMESPACE = "ipywidgets";
+
+export interface IPyWidgetTracker {
+  tracker: WidgetTracker<MainAreaWidget<RenderedWidget>>;
+  restorerOptions: IRestorer.IOptions<MainAreaWidget<RenderedWidget>>;
+}
+export const IPyWidgetTracker = new Token<IPyWidgetTracker>("ipywiget-tracker");
 
 async function getContext(
   docmanager: IDocumentManager,
@@ -77,14 +85,19 @@ class RenderedWidget extends WidgetRenderer {
       setData: () => null
     });
 
-    getContext(options.docmanager, options.notebook, "notebook").then(context =>
+    this.done = getContext(
+      options.docmanager,
+      options.notebook,
+      "notebook"
+    ).then(context => {
       registerWidgetManager(
         context,
         options.rendermime,
         [this][Symbol.iterator]()
-      )
-    );
+      );
+    });
   }
+  public done: Promise<void>;
 }
 
 function Component({ onClick }: { onClick: () => void }) {
@@ -122,7 +135,7 @@ class PyWidgetOutput extends ReactWidget implements IRenderMime.IRenderer {
   public data = {};
 }
 
-const extension: JupyterFrontEndPlugin<void> = {
+const extension: JupyterFrontEndPlugin<IPyWidgetTracker> = {
   id: "jupyter-widgets-takeover:widgets",
   autoStart: true,
   requires: [
@@ -131,7 +144,7 @@ const extension: JupyterFrontEndPlugin<void> = {
     ILayoutRestorer,
     INotebookTracker
   ],
-
+  provides: IPyWidgetTracker,
   activate: (
     app: JupyterFrontEnd,
     rendermime: IRenderMimeRegistry,
@@ -143,20 +156,23 @@ const extension: JupyterFrontEndPlugin<void> = {
       namespace: NAMESPACE
     });
     app.commands.addCommand(OPEN_WIDGET_COMMAND, {
-      execute: ({ notebook, data }) => {
+      execute: async ({ notebook, data }) => {
         const widget = new RenderedWidget({
           rendermime,
           notebook: notebook as string,
           data,
           docmanager
         });
-
+        await widget.done;
         const mainWidget = new MainAreaWidget({ content: widget });
-        tracker.add(mainWidget);
+        await tracker.add(mainWidget);
+
         app.shell.add(mainWidget, "main");
       }
     });
-    restorer.restore(tracker, {
+    const restorerOptions: IRestorer.IOptions<MainAreaWidget<
+      RenderedWidget
+    >> = {
       command: OPEN_WIDGET_COMMAND,
       args: ({ content }) => ({
         data: content.options.data,
@@ -164,7 +180,8 @@ const extension: JupyterFrontEndPlugin<void> = {
       }),
       name: ({ content }) =>
         `${content.options.notebook}:${content.options.data.model_id}`
-    });
+    };
+    restorer.restore(tracker, restorerOptions);
     notebook.widgetAdded.connect((_, panel) => {
       panel.content.rendermime.addFactory({
         safe: true,
@@ -173,6 +190,7 @@ const extension: JupyterFrontEndPlugin<void> = {
           new PyWidgetOutput({ app, notebook: panel.context.path })
       });
     });
+    return { tracker, restorerOptions };
   }
 };
 
