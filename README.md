@@ -12,6 +12,8 @@ Check out the `Demo.ipynb`.
 
 ![](./demo.gif)
 
+
+TODO: Add ability to remove more chrome https://github.com/jupyterlab/jupyterlab/issues/2031
 ## Requirements
 
 * JupyterLab >= 1.0
