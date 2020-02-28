@@ -34,9 +34,13 @@
     "@jupyterlab/application": "^2.0.0-rc.2",
     "@jupyterlab/statedb": "^2.0.0-rc.2"
   },
+  "peerDependencies": {
+    "@jupyter-widgets/jupyterlab-manager": "2.0.0-rc.3"
+  },
   "devDependencies": {
     "rimraf": "^2.6.1",
-    "typescript": "~3.7.0"
+    "typescript": "~3.7.0",
+    "@jupyter-widgets/jupyterlab-manager": "2.0.0-rc.3"
   },
   "sideEffects": [
     "style/*.css"

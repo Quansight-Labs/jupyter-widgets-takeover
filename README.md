@@ -2,7 +2,13 @@
 
 ![Github Actions Status](https://github.com/my_name/myextension/workflows/Build/badge.svg)
 
-A JupyterLab extension.
+Let your widgets takeover your JupyterLab!
+
+This extension is an *experiment* on how you can control your JupyterLab layout from Python.
+
+
+
+Check out the `Demo.ipynb`.
 
 
 ## Requirements
@@ -12,7 +18,7 @@ A JupyterLab extension.
 ## Install
 
 ```bash
-jupyter labextension install jupyter-widgets-takeover
+jupyter labextension install jupyter-widgets-takeover @jupyter-widgets/jupyterlab-manager
 ```
 
 ## Contributing
@@ -31,7 +37,7 @@ jlpm
 # Build Typescript source
 jlpm build
 # Link your development version of the extension with JupyterLab
-jupyter labextension link .
+jupyter labextension install . @jupyter-widgets/jupyterlab-manager
 # Rebuild Typescript source after making changes
 jlpm build
 # Rebuild JupyterLab after making any changes
