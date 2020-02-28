@@ -10,6 +10,7 @@ This extension is an *experiment* on how you can control your JupyterLab layout 
 
 Check out the `Demo.ipynb`.
 
+![](./demo.gif)
 
 ## Requirements
 
