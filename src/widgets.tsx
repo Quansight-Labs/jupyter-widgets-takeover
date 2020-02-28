@@ -75,7 +75,7 @@ class RenderedWidget extends WidgetRenderer {
       latexTypesetter: options.rendermime.latexTypesetter,
       sanitizer: options.rendermime.sanitizer
     });
-    this.title.label = "IPyWidget";
+    this.title.label = "Jupyter Widget";
     this.renderModel({
       data: {
         [WIDGETS_MIME_TYPE]: options.data
