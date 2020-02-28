@@ -1,0 +1,8 @@
+name: jupyter-widgets-takeoever
+channels:
+  - conda-forge/label/prerelease-jupyterlab
+  - conda-forge
+dependencies:
+  - jupyterlab
+  - nodejs
+  - ipywidgets
