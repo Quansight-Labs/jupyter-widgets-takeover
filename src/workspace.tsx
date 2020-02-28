@@ -12,6 +12,7 @@ import { IStateDB } from "@jupyterlab/statedb";
 import { PromiseDelegate } from "@lumino/coreutils";
 import * as React from "react";
 import { IPyWidgetTracker } from "./widgets";
+import { Widget } from "@lumino/widgets";
 
 const MIME_TYPE = "application/x.jupyterlab.workspace+json";
 
@@ -50,7 +51,7 @@ class OutputWidget extends ReactWidget implements IRenderMime.IRenderer {
   }
 
   async onClick() {
-    const { state, labShell, app, trackerRestorers } = this.options;
+    const { state, labShell, app, trackerRestorers, restorer } = this.options;
 
     for (const [k, v] of Object.entries(this.workspaceData)) {
       await state.save(k, v as any);
@@ -71,12 +72,22 @@ class OutputWidget extends ReactWidget implements IRenderMime.IRenderer {
         const value = results.values[index];
         await state.remove(id);
         const args = (value as any).data;
-        app.commands.execute(command, args);
+        await app.commands.execute(command, args);
       }
+    }
+    // copy all widgets from old to new, b/c they will have been added to old
+    // by tracker on old
+
+    for (const [name, widget] of ((restorer as any)._widgets as Map<
+      string,
+      Widget
+    >).entries()) {
+      ((newRestorer as any)._widgets as Map<string, Widget>).set(name, widget);
     }
 
     first.resolve();
-    labShell.restoreLayout(await layoutPromise);
+    const layout = await layoutPromise;
+    labShell.restoreLayout(layout);
     if (this.workspaceData.hide) {
       (labShell as any)._leftHandler._sideBar.hide();
       (labShell as any)._rightHandler._sideBar.hide();
