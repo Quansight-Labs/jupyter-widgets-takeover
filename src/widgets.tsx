@@ -29,8 +29,8 @@ const OPEN_WIDGET_COMMAND = "ipywidgets:open";
 const NAMESPACE = "ipywidgets";
 
 export interface IPyWidgetTracker {
-  tracker: WidgetTracker<MainAreaWidget<RenderedWidget>>;
-  restorerOptions: IRestorer.IOptions<MainAreaWidget<RenderedWidget>>;
+  namespace: string;
+  command: string;
 }
 export const IPyWidgetTracker = new Token<IPyWidgetTracker>("ipywiget-tracker");
 
@@ -190,7 +190,7 @@ const extension: JupyterFrontEndPlugin<IPyWidgetTracker> = {
           new PyWidgetOutput({ app, notebook: panel.context.path })
       });
     });
-    return { tracker, restorerOptions };
+    return { namespace: NAMESPACE, command: OPEN_WIDGET_COMMAND };
   }
 };
 

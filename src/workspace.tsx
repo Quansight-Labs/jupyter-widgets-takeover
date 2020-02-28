@@ -5,12 +5,11 @@ import {
   JupyterFrontEndPlugin,
   LayoutRestorer
 } from "@jupyterlab/application";
-import { ReactWidget, WidgetTracker } from "@jupyterlab/apputils";
+import { ReactWidget } from "@jupyterlab/apputils";
 import { IRenderMimeRegistry } from "@jupyterlab/rendermime";
 import { IRenderMime } from "@jupyterlab/rendermime-interfaces";
-import { IRestorer, IStateDB } from "@jupyterlab/statedb";
+import { IStateDB } from "@jupyterlab/statedb";
 import { PromiseDelegate } from "@lumino/coreutils";
-import { Widget } from "@lumino/widgets";
 import * as React from "react";
 import { IPyWidgetTracker } from "./widgets";
 
@@ -24,9 +23,9 @@ function Component({ onClick }: { onClick: () => void }) {
   );
 }
 
-export type TrackerRestorer<T extends Widget> = {
-  tracker: WidgetTracker<T>;
-  restorerOptions: IRestorer.IOptions<T>;
+export type TrackerRestorer = {
+  namespace: string;
+  command: string;
 };
 
 class OutputWidget extends ReactWidget implements IRenderMime.IRenderer {
@@ -35,7 +34,7 @@ class OutputWidget extends ReactWidget implements IRenderMime.IRenderer {
       state: IStateDB;
       restorer: ILayoutRestorer;
       labShell: ILabShell;
-      trackerRestorers: Array<TrackerRestorer<any>>;
+      trackerRestorers: Array<TrackerRestorer>;
       app: JupyterFrontEnd;
     }
   ) {
@@ -51,7 +50,7 @@ class OutputWidget extends ReactWidget implements IRenderMime.IRenderer {
   }
 
   async onClick() {
-    const { state, labShell, restorer, app, trackerRestorers } = this.options;
+    const { state, labShell, app, trackerRestorers } = this.options;
 
     for (const [k, v] of Object.entries(this.workspaceData)) {
       await state.save(k, v as any);
@@ -63,10 +62,19 @@ class OutputWidget extends ReactWidget implements IRenderMime.IRenderer {
       first: first.promise,
       registry: app.commands
     });
-    const layoutPromise = (restorer as LayoutRestorer).fetch();
-    for (const { tracker, restorerOptions } of trackerRestorers) {
-      await newRestorer.restore(tracker, restorerOptions);
+    const layoutPromise = (newRestorer as LayoutRestorer).fetch();
+
+    // Copies logic in restoreablepool restore
+    for (const { namespace, command } of trackerRestorers) {
+      const results = await state.list(namespace);
+      for (const [index, id] of results.ids.entries()) {
+        const value = results.values[index];
+        await state.remove(id);
+        const args = (value as any).data;
+        app.commands.execute(command, args);
+      }
     }
+
     first.resolve();
     labShell.restoreLayout(await layoutPromise);
     if (this.workspaceData.hide) {
